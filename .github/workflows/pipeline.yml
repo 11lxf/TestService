@@ -1,0 +1,58 @@
+name: test-pipeline
+
+permissions:
+  contents: read
+
+# 向 main 分支提交 PR 时触发
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  # 构建
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 检出代码
+      - name: checkout-code
+        uses: actions/checkout@v4
+
+      # 安装JDK21
+      - name: setup-java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          description: 'temurin' # 使用 Temurin 产商的 JDK 版本
+
+      # 构建并发布到仓库
+      - name: build-and-publish
+        env:
+          isRelease: false
+        run: |
+          bash .github/workflows/build/buildAndPublish.sh
+
+  # 部署
+#  deploy:
+#    # 需要 build 执行完后才执行，否则 job 是并行执行的
+#    needs: build
+#    runs-on: debian-hk-claw-2c2g
+#    steps:
+#      - name: stop
+#        run: |
+#          bash .github/workflows/deploy/0-stop.sh
+#      - name: uninstall
+#        run: |
+#          bash .github/workflows/deploy/1-uninstall.sh
+#      - name: install
+#        run: |
+#          bash .github/workflows/deploy/2-install.sh
+#      - name: start
+#        run: |
+#          bash .github/workflows/deploy/3-start.sh
+#      - name: check
+#        run: |
+#          bash .github/workflows/deploy/4-check.sh
+
+
+

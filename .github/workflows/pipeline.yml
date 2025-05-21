@@ -3,10 +3,13 @@ name: test-pipeline
 permissions:
   contents: read
 
-# 向 main 分支提交 PR 时触发
+
+# 向 main 分支创建或更新 PR 时触发
 on:
   pull_request:
-    types: [opened, synchronize]  # PR创建或代码更新时触发，closed则是PR关闭时触发（包括合并或关闭未合并）
+    types:
+      - opened
+      - synchronize # PR创建或代码更新时触发
     branches:
       - main
 

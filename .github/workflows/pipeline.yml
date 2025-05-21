@@ -6,6 +6,7 @@ permissions:
 # 向 main 分支提交 PR 时触发
 on:
   pull_request:
+    types: [opened, synchronize]  # PR创建或代码更新时触发，closed则是PR关闭时触发（包括合并或关闭未合并）
     branches:
       - main
 

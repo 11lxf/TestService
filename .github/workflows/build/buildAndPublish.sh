@@ -18,7 +18,7 @@ if [ "${isRelease}"x = "false"x ]; then
   # PACKAGE_TAR_PATH="${SERVICE_NAME}_${SERVICE_VERSION}.${buildNumber}"
 
   # maven打包并发布到私仓
-  mvn clean deploy --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true -DfinalName=${PACKAGE_NAME}
+  mvn clean deploy --settings .github/workflows/https_settings.xml -DfinalName=${PACKAGE_NAME}
 elif [ "${isRelease}"x = "true"x ]; then
   SERVICE_VERSION=${releaseVersion}
   # 版本号+时间戳+build随机数写入buildInfo.properties
@@ -26,7 +26,7 @@ elif [ "${isRelease}"x = "true"x ]; then
   sed -i 's/VERSION/'${SERVICE_VERSION}'/g' ${DEPLOY_PATH}/appspec.yml
   # 压缩包名称
   PACKAGE_TAR_PATH="${SERVICE_NAME}_${SERVICE_VERSION}"
-  # maven打包并发布到私仓
+  # maven打包并发布到私仓, 主仓合入代码前必须保证所有测试通过，所以发布正式环境时跳过单元测试
   mvn clean deploy --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true -U -Dmaven.wagon.http.ssl.insecure=true
 fi
 

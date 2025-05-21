@@ -21,9 +21,10 @@ if [ "${isRelease}"x = "false"x ]; then
     cd $(dirname $0)
     pwd
   )
+  # 此时相对路径在 .github/workflows/
   cd $workdir/..
   # maven打包命令
-  mvn clean deploy --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true -DfinalName=${PACKAGE_NAME}
+  mvn clean deploy --settings .https_settings.xml -Dmaven.test.skip=true -DfinalName=${PACKAGE_NAME}
 elif [ "${isRelease}"x = "true"x ]; then
   SERVICE_VERSION=${releaseVersion}
   # 版本号+时间戳+build随机数写入buildInfo.properties

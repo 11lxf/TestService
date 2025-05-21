@@ -5,6 +5,8 @@ PACKAGE_PATH="target"
 PACKAGE_NAME="test-service-0.0.1-SNAPSHOT.jar"
 DEPLOY_PATH=".github/workflows/deploy"
 
+# github action工作目录是项目根目录
+
 echo "Release is ${isRelease}"
 # 判断当前构建是否为版本构建，以及定义构建变量(包版本,包服务名称,包编译存放路径,包类型,包编译名称,包打包名称)
 if [ "${isRelease}"x = "false"x ]; then

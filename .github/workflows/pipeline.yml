@@ -25,6 +25,16 @@ jobs:
           java-version: '21'
           distribution: 'temurin' # 使用 Temurin 产商的 JDK 版本
 
+      # 配置Maven仓库缓存，避免每次构建时都重新下载依赖
+      - name: cache-local-maven-repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: |
+            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
       # 构建并发布到仓库
       - name: build-and-publish
         env:

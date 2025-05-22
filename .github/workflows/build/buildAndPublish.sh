@@ -1,8 +1,8 @@
 #!/bin/bash
 set -ex
 SERVICE_NAME="TestService"
-PACKAGE_PATH="target"
-PACKAGE_NAME="test-service-0.0.1-SNAPSHOT.jar"
+#PACKAGE_PATH="target"
+PACKAGE_NAME="test-service-1.0.0-SNAPSHOT.jar"
 DEPLOY_PATH=".github/workflows/deploy"
 
 # github action工作目录是项目根目录
@@ -10,13 +10,13 @@ DEPLOY_PATH=".github/workflows/deploy"
 echo "Release is ${isRelease}"
 # 判断当前构建是否为版本构建，以及定义构建变量(包版本,包服务名称,包编译存放路径,包类型,包编译名称,包打包名称)
 if [ "${isRelease}"x = "false"x ]; then
-  SERVICE_VERSION='0.0.1-SNAPSHOT'
-  # 版本号+时间戳+build随机数写入buildInfo.properties
-  # echo "buildVersion=${SERVICE_VERSION}.$buildNumber" > buildInfo.properties
-  # sed -i 's/VERSION/'${SERVICE_VERSION}.${buildNumber}'/g' ${DEPLOY_PATH}/appspec.yml
+  SERVICE_VERSION='1.0.0-SNAPSHOT'
+  # 生成时间戳（精确到秒）
+  TIMESTAMP=$(date +'%Y%m%d%H%M%S')
+  # 版本号写入部署配置文件appspec.yml
+  sed -i 's/VERSION/'${SERVICE_VERSION}.${TIMESTAMP}'/g' ${DEPLOY_PATH}/appspec.yml
   # 压缩包名称
-  # PACKAGE_TAR_PATH="${SERVICE_NAME}_${SERVICE_VERSION}.${buildNumber}"
-
+  PACKAGE_NAME="${SERVICE_NAME}_${SERVICE_VERSION}.${TIMESTAMP}.jar"
   # maven打包并发布到私仓
   mvn clean deploy --settings .github/workflows/https_settings.xml -DfinalName=${PACKAGE_NAME}
 elif [ "${isRelease}"x = "true"x ]; then

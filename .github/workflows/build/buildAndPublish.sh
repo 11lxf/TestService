@@ -9,7 +9,7 @@ echo "Release is ${IS_RELEASE}"
 if [ "${IS_RELEASE}"x = "false"x ]; then
   SERVICE_VERSION='1.0.0-SNAPSHOT'
   # 保存版本变脸到输出变量version
-  run: echo "version=${SERVICE_VERSION}" >> $GITHUB_OUTPUT
+  echo "version=${SERVICE_VERSION}" >> $GITHUB_OUTPUT
   # maven打包并发布到私仓
   mvn clean deploy --settings .github/workflows/https_settings.xml
 elif [ "${IS_RELEASE}"x = "true"x ]; then

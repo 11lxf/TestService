@@ -68,8 +68,8 @@ jobs:
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
         run: |
-          echo $MAVEN_USERNAME
-          echo "$MAVEN_USERNAME"
+          echo "{$MAVEN_USERNAME}"
+          echo "${{ vars.SERVICE_NAME }}"
           echo "${{ secrets.NEXUS_USERNAME }}"
           NEXUS_HOST="https://nexus.shawf.me"
           GROUP_ID="me.shawf"

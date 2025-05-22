@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo "0.启动程序..."
 # 启动程序
 #chown -R appuser:appuser "$app_dir"/
 #su appuser -c "${JAVA_HOME}/bin/java \

@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo "0.健康检查..."
 # 健康检查
 #status_check() {
 #	echo `curl -I -m 10 -o /dev/null -s -w %{http_code} "http://localhost:${service_port}/api/v1/test/healthcheck"`

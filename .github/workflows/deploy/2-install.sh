@@ -5,6 +5,7 @@ GROUP_ID="me.shawf"
 ARTIFACT_ID="test-service"
 
 #  检查部署目录是否存在，不存在则创建
+echo "0.检查部署目录是否存在，不存在则创建..."
 if [ ! -d "$DEPLOY_PATH/$SERVICE_NAME" ]; then
     echo "部署目录不存在，正在创建: $DEPLOY_PATH/$SERVICE_NAME"
     mkdir -p "$DEPLOY_PATH/$SERVICE_NAME"

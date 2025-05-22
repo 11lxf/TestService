@@ -1,5 +1,6 @@
 #!/bin/bash
 
+echo "0.停止相关进程..."
 # 停止相关进程
 #app_alive=`ss -lanput |grep -w LISTEN |grep -w $SERVER_PORT |wc -l`
 #pid_exist=`ss -lanput |grep -w LISTEN |grep -w $SERVER_PORT |grep 'pid=' |wc -l`

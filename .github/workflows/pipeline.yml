@@ -13,6 +13,9 @@ jobs:
   # 构建
   build:
     runs-on: ubuntu-latest
+    # 输出变量用于第二个job
+    outputs:
+      version: ${{ steps.build-and-publish.outputs.version }}
     steps:
       # 检出代码
       - name: checkout-code
@@ -38,31 +41,40 @@ jobs:
       # 构建并发布到仓库
       - name: build-and-publish
         env:
-          isRelease: false
+          IS_RELEASE: false
+          MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          SERVICE_NAME: ${{ vars.SERVICE_NAME }}
         run: |
           bash .github/workflows/build/buildAndPublish.sh
 
   # 部署
-#  deploy:
-#    # 需要 build 执行完后才执行，否则 job 是并行执行的
-#    needs: build
-#    runs-on: debian-hk-claw-2c2g
-#    steps:
-#      - name: stop
-#        run: |
-#          bash .github/workflows/deploy/0-stop.sh
-#      - name: uninstall
-#        run: |
-#          bash .github/workflows/deploy/1-uninstall.sh
-#      - name: install
-#        run: |
-#          bash .github/workflows/deploy/2-install.sh
-#      - name: start
-#        run: |
-#          bash .github/workflows/deploy/3-start.sh
-#      - name: check
-#        run: |
-#          bash .github/workflows/deploy/4-check.sh
+  deploy:
+    # 需要 build 执行完后才执行，否则 job 是并行执行的
+    needs: build
+    runs-on: debian-hk-claw-2c2g
+    steps:
+      - name: stop
+        run: |
+          bash .github/workflows/deploy/0-stop.sh
+      - name: uninstall
+        run: |
+          bash .github/workflows/deploy/1-uninstall.sh
+      - name: install
+        env:
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+          VERSION: ${{ needs.build.outputs.version }}
+          MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        run: |
+          bash .github/workflows/deploy/2-install.sh
+      - name: start
+        run: |
+          bash .github/workflows/deploy/3-start.sh
+      - name: check
+        run: |
+          bash .github/workflows/deploy/4-check.sh
 
 
 

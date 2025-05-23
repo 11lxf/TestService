@@ -1,8 +1,8 @@
 name: test-pipeline
-# 测试是否pull_request_target事件触发正确
+
 # 向 main 分支创建或更新 PR 时触发
 on:
-  pull_request_target:
+  pull_request:
     types:
       - opened
       - synchronize # PR创建或代码更新时触发
@@ -42,6 +42,7 @@ jobs:
 
       # 构建并发布到仓库
       - name: build-and-publish
+        id: build-and-publish
         env:
           IS_RELEASE: false
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
@@ -49,7 +50,6 @@ jobs:
           SERVICE_NAME: ${{ vars.SERVICE_NAME }}
         run: |
           bash .github/workflows/build/buildAndPublish.sh
-          cat $GITHUB_OUTPUT
 
   # 部署
   deploy:
@@ -71,8 +71,6 @@ jobs:
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
         run: |
-          echo "${{ vars.SERVICE_NAME }}"
-          echo "${{ secrets.NEXUS_USERNAME }}"
           NEXUS_HOST="https://nexus.shawf.me"
           GROUP_ID="me/shawf"
           ARTIFACT_ID="test-service"

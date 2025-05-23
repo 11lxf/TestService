@@ -1,12 +1,11 @@
 name: test-pipeline
 
-permissions:
-  contents: read
-
-# 向 main 分支提交 PR 时触发
+# 向 main 分支创建或更新 PR 时触发
 on:
-  pull_request:
-    types: [opened, synchronize]  # PR创建或代码更新时触发，closed则是PR关闭时触发（包括合并或关闭未合并）
+  pull_request_target:
+    types:
+      - opened
+      - synchronize # PR创建或代码更新时触发
     branches:
       - main
 
@@ -14,46 +13,107 @@ jobs:
   # 构建
   build:
     runs-on: ubuntu-latest
+    # 输出变量用于第二个job
+    outputs:
+      version: ${{ steps.build-and-publish.outputs.version }}
     steps:
       # 检出代码
       - name: checkout-code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }} # 指定切换到PR提交的源分支
 
       # 安装JDK21
       - name: setup-java
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          description: 'temurin' # 使用 Temurin 产商的 JDK 版本
+          distribution: 'temurin' # 使用 Temurin 产商的 JDK 版本
+
+      # 配置Maven仓库缓存，避免每次构建时都重新下载依赖
+      - name: cache-local-maven-repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: |
+            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
 
       # 构建并发布到仓库
       - name: build-and-publish
         env:
-          isRelease: false
+          IS_RELEASE: false
+          MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+          SERVICE_NAME: ${{ vars.SERVICE_NAME }}
         run: |
           bash .github/workflows/build/buildAndPublish.sh
 
   # 部署
-#  deploy:
-#    # 需要 build 执行完后才执行，否则 job 是并行执行的
-#    needs: build
-#    runs-on: debian-hk-claw-2c2g
-#    steps:
-#      - name: stop
-#        run: |
-#          bash .github/workflows/deploy/0-stop.sh
-#      - name: uninstall
-#        run: |
-#          bash .github/workflows/deploy/1-uninstall.sh
-#      - name: install
-#        run: |
-#          bash .github/workflows/deploy/2-install.sh
-#      - name: start
-#        run: |
-#          bash .github/workflows/deploy/3-start.sh
-#      - name: check
-#        run: |
-#          bash .github/workflows/deploy/4-check.sh
+  deploy:
+    # 需要 build 执行完后才执行，否则 job 是并行执行的
+    needs: build
+    runs-on: debian-hk-claw-2c2g
+    steps:
+      - name: stop
+        run: |
+          echo "0.停止相关进程..."
+      - name: uninstall
+        run: |
+          echo "0.删除对应文件..."
+      - name: install
+        env:
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+          VERSION: ${{ needs.build.outputs.version }}
+          MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+        run: |
+          echo "${{ vars.SERVICE_NAME }}"
+          echo "${{ secrets.NEXUS_USERNAME }}"
+          NEXUS_HOST="https://nexus.shawf.me"
+          GROUP_ID="me.shawf"
+          ARTIFACT_ID="test-service"
+          
+          #  检查部署目录是否存在，不存在则创建
+          echo "0.检查部署目录是否存在，不存在则创建..."
+          if [ ! -d "$DEPLOY_PATH/$SERVICE_NAME" ]; then
+          echo "部署目录不存在，正在创建: $DEPLOY_PATH/$SERVICE_NAME"
+          mkdir -p "$DEPLOY_PATH/$SERVICE_NAME"
+          else
+          echo "部署目录已存在: $DEPLOY_PATH/$SERVICE_NAME"
+          fi
+          
+          ## 进入部署目录
+          cd "$DEPLOY_PATH/$SERVICE_NAME" || { echo "无法进入部署目录"; exit 1; }
+          
+          # 从私有仓库拉取安装包
+          echo "1.下载maven-metadata.xml..."
+          METADATA_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$SERVICE_VERSION/maven-metadata.xml"
+          if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$METADATA_URL" -O maven-metadata.xml; then
+          echo "maven-metadata.xml拉取成功: maven-metadata.xml"
+          else
+          echo "maven-metadata.xml拉取失败"
+          exit 1
+          fi
+          echo "2.正在从maven-metadata.xml解析出snapshotVersion字段并拼接安装包下载URL..."
+          SNAPSHOT_VERSION=$(grep '<value>' maven-metadata.xml | sed 's/<[^>]*>//g' | head -n1)
+          DOWNLOAD_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$SERVICE_VERSION/$ARTIFACT_ID-$SNAPSHOT_VERSION.jar"
+          
+          echo "3.正在从私有仓库拉取安装包..."
+          if wget "$DOWNLOAD_URL" -O "$ARTIFACT_ID-$SERVICE_VERSION.jar"; then
+          echo "安装包拉取成功: $ARTIFACT_ID-$SERVICE_VERSION.jar"
+          else
+          echo "安装包拉取失败"
+          exit 1
+          fi
+      - name: start
+        run: |
+          echo "0.启动程序..."
+      - name: check
+        run: |
+          echo "0.健康检查..."
 
 
 

@@ -1,48 +1,19 @@
 #!/bin/bash
 set -ex
-SERVICE_NAME="TestService"
-PACKAGE_PATH="target"
-PACKAGE_NAME="test-service-0.0.1-SNAPSHOT.jar"
-DEPLOY_PATH=".github/workflows/deploy"
+# 生成时间戳（精确到秒）
+#TIMESTAMP=$(date +'%Y%m%d%H%M%S')
+# github action工作目录是项目根目录
 
-echo "Release is ${isRelease}"
+echo "Release is ${IS_RELEASE}"
 # 判断当前构建是否为版本构建，以及定义构建变量(包版本,包服务名称,包编译存放路径,包类型,包编译名称,包打包名称)
-if [ "${isRelease}"x = "false"x ]; then
-  SERVICE_VERSION='0.0.1-SNAPSHOT'
-  # 版本号+时间戳+build随机数写入buildInfo.properties
-  # echo "buildVersion=${SERVICE_VERSION}.$buildNumber" > buildInfo.properties
-  # sed -i 's/VERSION/'${SERVICE_VERSION}.${buildNumber}'/g' ${DEPLOY_PATH}/appspec.yml
-  # 压缩包名称
-  # PACKAGE_TAR_PATH="${SERVICE_NAME}_${SERVICE_VERSION}.${buildNumber}"
-
-  # 执行工程编译
-  workdir=$(
-    # $0 输出的是脚本名称，$(dirname $0) 输出的是当前目录到脚本的相对路径（bash 比如 /opt/test.sh 输出的就是 /opt/test.sh）
-    cd $(dirname $0)
-    pwd
-  )
-  cd $workdir/..
-  # maven打包命令
-  mvn clean deploy --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true -DfinalName=${PACKAGE_NAME}
-elif [ "${isRelease}"x = "true"x ]; then
-  SERVICE_VERSION=${releaseVersion}
-  # 版本号+时间戳+build随机数写入buildInfo.properties
-  echo "buildVersion=${SERVICE_VERSION}" >buildInfo.properties
-  sed -i 's/VERSION/'${SERVICE_VERSION}'/g' ${DEPLOY_PATH}/appspec.yml
-  # 压缩包名称
-  PACKAGE_TAR_PATH="${SERVICE_NAME}_${SERVICE_VERSION}"
-  # 执行工程编译
-  workdir=$(
-    cd $(dirname $0)
-    pwd
-  )
-  cd $workdir/..
+if [ "${IS_RELEASE}"x = "false"x ]; then
+  SERVICE_VERSION='1.0.0-SNAPSHOT'
+  # 保存版本变脸到输出变量version
+  echo "version=${SERVICE_VERSION}" >> $GITHUB_OUTPUT
   # maven打包并发布到私仓
-  mvn clean package --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true -U -Dmaven.wagon.http.ssl.insecure=true
+  mvn clean deploy --settings .github/workflows/https_settings.xml
+elif [ "${IS_RELEASE}"x = "true"x ]; then
+  SERVICE_VERSION=${releaseVersion}
+  # maven打包并发布到私仓, 主仓合入代码前必须保证所有测试通过，所以发布正式环境时跳过单元测试
+  mvn clean deploy --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true -U -Dmaven.wagon.http.ssl.insecure=true
 fi
-
-# 压缩目标包
-# mkdir -p ${PACKAGE_TAR_PATH}/packages
-# mv ${PACKAGE_PATH}/${PACKAGE_NAME} ${PACKAGE_TAR_PATH}/packages
-# mv ${DEPLOY_PATH}/* ${PACKAGE_TAR_PATH}
-# tar -zcf ${PACKAGE_PATH}/${PACKAGE_TAR_PATH}.tar.gz ${PACKAGE_TAR_PATH}/*

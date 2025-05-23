@@ -1,7 +1,7 @@
 #!/bin/bash
 
 NEXUS_HOST="https://nexus.shawf.me"
-GROUP_ID="me.shawf"
+GROUP_ID="me/shawf"
 ARTIFACT_ID="test-service"
 
 #  检查部署目录是否存在，不存在则创建

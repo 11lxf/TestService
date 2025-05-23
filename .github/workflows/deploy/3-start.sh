@@ -1,8 +1,8 @@
 #!/bin/bash
 
 echo "0.启动程序..."
-# 启动程序
-
+${JAVA_HOME}/bin/java -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
+>> $DEPLOY_PATH/$SERVICE_NAME/java.log &
 #chown -R appuser:appuser "$app_dir"/
 #su appuser -c "${JAVA_HOME}/bin/java \
 #-Dcustom.authentication.private-secret-key=${AUTH_PRIVATE_SECRET_KEY} \

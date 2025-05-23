@@ -2,7 +2,7 @@ name: test-pipeline
 
 # 向 main 分支创建或更新 PR 时触发
 on:
-  pull_request_target:
+  pull_request:
     types:
       - opened
       - synchronize # PR创建或代码更新时触发

@@ -41,8 +41,8 @@ jobs:
             ${{ runner.os }}-maven-
 
       # 构建并发布到仓库
-      - name: build-and-publish
-        id: build-and-publish
+      - id: build-and-publish
+        name: build-and-publish
         env:
           IS_RELEASE: false
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}

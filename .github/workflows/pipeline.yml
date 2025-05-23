@@ -2,7 +2,7 @@ name: test-pipeline
 
 # 向 main 分支创建或更新 PR 时触发
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize # PR创建或代码更新时触发
@@ -20,8 +20,8 @@ jobs:
       # 检出代码
       - name: checkout-code
         uses: actions/checkout@v4
-        #with:
-          #ref: ${{ github.event.pull_request.head.sha }} # 指定切换到PR提交的源分支
+        with:
+          ref: ${{ github.event.pull_request.head.sha }} # 指定切换到PR提交的源分支
 
       # 安装JDK21
       - name: setup-java

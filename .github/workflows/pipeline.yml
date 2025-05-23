@@ -101,7 +101,7 @@ jobs:
           DOWNLOAD_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$SNAPSHOT_VERSION.jar"
           
           echo "3.正在从私有仓库拉取安装包..."
-          if wget "$DOWNLOAD_URL" -O "$ARTIFACT_ID-$VERSION.jar"; then
+          if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$DOWNLOAD_URL" -O "$ARTIFACT_ID-$VERSION.jar"; then
               echo "安装包拉取成功: $ARTIFACT_ID-$VERSION.jar"
           else
               echo "安装包拉取失败"

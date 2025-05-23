@@ -2,7 +2,7 @@ name: test-pipeline
 
 # 向 main 分支创建或更新 PR 时触发
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - synchronize # PR创建或代码更新时触发
@@ -41,8 +41,8 @@ jobs:
             ${{ runner.os }}-maven-
 
       # 构建并发布到仓库
-      - name: build-and-publish
-        id: build-and-publish
+      - id: build-and-publish
+        name: build-and-publish
         env:
           IS_RELEASE: false
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}

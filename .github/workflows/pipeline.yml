@@ -42,6 +42,7 @@ jobs:
 
       # 构建并发布到仓库
       - name: build-and-publish
+        id: build-and-publish
         env:
           IS_RELEASE: false
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
@@ -49,7 +50,6 @@ jobs:
           SERVICE_NAME: ${{ vars.SERVICE_NAME }}
         run: |
           bash .github/workflows/build/buildAndPublish.sh
-          cat $GITHUB_OUTPUT
 
   # 部署
   deploy:

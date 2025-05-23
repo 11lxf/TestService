@@ -7,7 +7,7 @@ set -ex
 echo "Release is ${IS_RELEASE}"
 # 判断当前构建是否为版本构建，以及定义构建变量(包版本,包服务名称,包编译存放路径,包类型,包编译名称,包打包名称)
 if [ "${IS_RELEASE}"x = "false"x ]; then
-  SERVICE_VERSION='1.0.0-SNAPSHOT'
+  SERVICE_VERSION='1.0.0SNAPSHOT'
   # 保存版本变脸到输出变量version
   echo "version=${SERVICE_VERSION}" >> $GITHUB_OUTPUT
   # maven打包并发布到私仓

@@ -113,8 +113,14 @@ jobs:
           
           echo "安装完成"
       - name: start
+        env:
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+          SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+          VERSION: ${{ needs.build.outputs.version }}
         run: |
           echo "0.启动程序..."
+          ${JAVA_HOME}/bin/java -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
+          >> $DEPLOY_PATH/$SERVICE_NAME/java.log &
       - name: check
         run: |
           echo "0.健康检查..."

@@ -49,6 +49,7 @@ jobs:
           SERVICE_NAME: ${{ vars.SERVICE_NAME }}
         run: |
           bash .github/workflows/build/buildAndPublish.sh
+          cat $GITHUB_OUTPUT
 
   # 部署
   deploy:
@@ -73,7 +74,7 @@ jobs:
           echo "${{ vars.SERVICE_NAME }}"
           echo "${{ secrets.NEXUS_USERNAME }}"
           NEXUS_HOST="https://nexus.shawf.me"
-          GROUP_ID="me.shawf"
+          GROUP_ID="me/shawf"
           ARTIFACT_ID="test-service"
           
           #  检查部署目录是否存在，不存在则创建

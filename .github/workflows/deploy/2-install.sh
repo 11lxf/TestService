@@ -26,7 +26,7 @@ if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$METADATA_URL" -O mav
       exit 1
   fi
 echo "2.正在从maven-metadata.xml解析出snapshotVersion字段并拼接安装包下载URL..."
-SNAPSHOT_VERSION=$(grep '<value>' maven-metadata.xml | sed 's/<[^>]*>//g' | head -n1)
+SNAPSHOT_VERSION=$(grep '<value>' maven-metadata.xml | sed 's/<[^>]*>//g' | head -n1 | tr -d ' \t')
 DOWNLOAD_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$SNAPSHOT_VERSION.jar"
 
 echo "3.正在从私有仓库拉取安装包..."

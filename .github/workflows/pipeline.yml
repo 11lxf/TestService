@@ -77,7 +77,7 @@ jobs:
       - name: uninstall
         run: |
           echo "0.删除对应文件..."
-          rm -r $DEPLOY_PATH/$SERVICE_NAME/*.jar $DEPLOY_PATH/$SERVICE_NAME/maven-metadata.xml
+          find /opt/apps/TestService/ \( -name '*.jar' -o -name 'maven-metadata.xml' \) -delete
       - name: install
         run: |   
           #  检查部署目录是否存在，不存在则创建

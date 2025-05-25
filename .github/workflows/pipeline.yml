@@ -179,7 +179,7 @@ jobs:
           until [ "200"x = "$result"x ] || [ $attempts -ge $max_attempts ]
           do
             result=$(status_check)
-            # ((attempts++))
+            # ((attempts++)) 有时候会报错
             attempts=$((attempts+1))
             sleep 2
           done

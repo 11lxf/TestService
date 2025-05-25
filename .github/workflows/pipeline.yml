@@ -33,11 +33,17 @@ jobs:
     outputs:
       version: ${{ steps.build-and-publish.outputs.version }}
     steps:
-      # 检出代码
+      # 检出代码-PR触发
       - name: checkout-code
         uses: actions/checkout@v4
+        if: github.event_name == 'pull_request_target'
         with:
           ref: ${{ github.event.pull_request.head.sha }} # 指定切换到PR提交的源分支
+          
+      # 检出代码-非PR触发
+      - name: checkout-code-default-branch
+        uses: actions/checkout@v4
+        if: github.event_name != 'pull_request_target'
 
       # 安装JDK21
       - name: setup-java
@@ -173,8 +179,9 @@ jobs:
           until [ "200"x = "$result"x ] || [ $attempts -ge $max_attempts ]
           do
             result=$(status_check)
-            ((attempts++))
-            # sleep 2
+            # ((attempts++))
+            attempts=$((attempts+1))
+            sleep 2
           done
 
           # 检查是否达到最大尝试次数

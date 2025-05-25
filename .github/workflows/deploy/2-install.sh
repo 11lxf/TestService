@@ -13,6 +13,8 @@ fi
 cd "$DEPLOY_PATH/$SERVICE_NAME" || { echo "无法进入部署目录"; exit 1; }
 
 # 从私有仓库拉取安装包
+echo "等待maven-metadata.xml更新 10s..."
+sleep 10
 echo "1.下载maven-metadata.xml..."
 METADATA_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$VERSION/maven-metadata.xml"
 if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$METADATA_URL" -O maven-metadata.xml; then

@@ -157,9 +157,9 @@ jobs:
           After=network.target
 
           [Service]
-          ExecStart=${JAVA_HOME}/bin/java \
+          ExecStart=$JAVA_HOME/bin/java \
                     -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
-                    --spring.profiles.active=uat --server.port=${SERVER_PORT}
+                    --spring.profiles.active=uat --server.port=$SERVICE_PORT
           Restart=on-failure
           User=appuser
           Group=appgroup

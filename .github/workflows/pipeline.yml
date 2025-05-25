@@ -156,9 +156,9 @@ jobs:
           result=$(status_check)
           until [ "200"x = "$result"x ] || [ $attempts -ge $max_attempts ]
           do
-          result=$(status_check)
-          ((attempts++))
-          sleep 2
+            result=$(status_check)
+            ((attempts++))
+            sleep 2
           done
 
           # 检查是否达到最大尝试次数

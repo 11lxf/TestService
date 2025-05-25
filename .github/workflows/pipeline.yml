@@ -30,7 +30,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     # 仅允许成员才能触发
-    if: contains(fromJson('["shawflee"]'), github.actor)
+    if: contains(fromJson('["shawflee"]'), github.event.sender.login)
     # 输出变量用于第二个job
     outputs:
       version: ${{ steps.build-and-publish.outputs.version }}

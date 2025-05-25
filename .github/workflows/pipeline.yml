@@ -57,24 +57,37 @@ jobs:
     needs: build
     runs-on: debian-hk-claw-2c2g
     steps:
-      - name: stop
-        run: |
-          echo "0.停止相关进程..."
-      - name: uninstall
-        run: |
-          echo "0.删除对应文件..."
-      - name: install
+      - name: set-env-var
         env:
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
           SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+          ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
+          NEXUS_HOST: ${{ vars.NEXUS_HOST }}
+          GROUP_ID: ${{ vars.GROUP_ID }}
           VERSION: ${{ needs.build.outputs.version }}
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
         run: |
-          NEXUS_HOST="https://nexus.shawf.me"
-          GROUP_ID="me/shawf"
-          ARTIFACT_ID="test-service"
-          
+          echo "DEPLOY_PATH: $DEPLOY_PATH"
+          echo "SERVICE_NAME: $SERVICE_NAME"
+          echo "ARTIFACT_ID: $ARTIFACT_ID"
+          echo "NEXUS_HOST: $NEXUS_HOST"
+          echo "GROUP_ID: $GROUP_ID"
+          echo "VERSION: $VERSION"
+      - name: stop
+        run: |
+          echo "0.停止相关进程..."
+          PID=$(ps -ef | grep $ARTIFACT_ID-$VERSION.jar | grep -v grep | awk '{ print $2 }')
+          if [ -n "$PID" ]; then
+              echo "Killing process with PID $PID"
+              kill -9 $PID
+          fi
+      - name: uninstall
+        run: |
+          echo "0.删除对应文件..."
+          rm -r $DEPLOY_PATH/$SERVICE_NAME/*.jar $DEPLOY_PATH/$SERVICE_NAME/maven-metadata.xml
+      - name: install
+        run: |   
           #  检查部署目录是否存在，不存在则创建
           echo "0.检查部署目录是否存在，不存在则创建..."
           if [ ! -d "$DEPLOY_PATH/$SERVICE_NAME" ]; then
@@ -106,21 +119,37 @@ jobs:
           else
               echo "安装包拉取失败"
               exit 1
-          fi
-          
-          # 解压安装包（如果需要）
-          # tar -xzvf "$PACKAGE_NAME"
-          
+          fi         
           echo "安装完成"
       - name: start
-        env:
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
-          SERVICE_NAME: ${{ vars.SERVICE_NAME }}
-          VERSION: ${{ needs.build.outputs.version }}
         run: |
           echo "0.启动程序..."
           ${JAVA_HOME}/bin/java -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
-          >> $DEPLOY_PATH/$SERVICE_NAME/java.log &
+          --spring.profiles.active=uat > $DEPLOY_PATH/$SERVICE_NAME/java.log &
       - name: check
         run: |
           echo "0.健康检查..."
+          status_check() {
+          	echo `curl -I -m 10 -o /dev/null -s -w %{http_code} "http://localhost:${SERVICE_PORT}/api/v1/test/healthcheck"`
+          }
+
+          # 设置最大尝试次数
+          max_attempts=10
+          attempts=0
+
+          result=$(status_check)
+          until [ "200"x = "$result"x ] || [ $attempts -ge $max_attempts ]
+          do
+          	result=$(status_check)
+          	((attempts++))
+          	sleep 2
+          done
+
+          # 检查是否达到最大尝试次数
+          if [ $attempts -ge $max_attempts ]; then
+              echo "Timeout reached, status is not 200"
+              exit 1 # 返回错误状态码
+          else
+              echo "Status is 200"
+              exit 0 # 返回成功状态码
+          fi

@@ -123,8 +123,7 @@ jobs:
           nohup ${JAVA_HOME}/bin/java \
           -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
           --spring.profiles.active=uat \
-          > $DEPLOY_PATH/$SERVICE_NAME/java.log \
-          2>&1 &
+          > $DEPLOY_PATH/$SERVICE_NAME/java.log &
           echo "1.启动程序完成"
       - name: check
         run: |

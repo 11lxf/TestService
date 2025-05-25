@@ -151,6 +151,8 @@ jobs:
       - name: start
         run: |
           echo "0.启动程序..."
+          # 显式刷新环境变量
+          source /etc/profile
           cat << EOF | sudo tee /etc/systemd/system/$ARTIFACT_ID.service
           [Unit]
           Description=${SERVICE_NAME}

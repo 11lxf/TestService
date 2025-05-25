@@ -103,7 +103,12 @@ jobs:
       - name: uninstall
         run: |
           echo "0.删除对应文件..."
-          find /opt/apps/TestService/ \( -name '*.jar' -o -name 'maven-metadata.xml' \) -delete
+          app_dir=$DEPLOY_PATH/$SERVICE_NAME
+          if [ -d "$app_dir" ]; then
+            find $app_dir \( -name '*.jar' -o -name 'maven-metadata.xml' \) -delete
+          else
+            echo "目录 $app_dir 不存在，无需执行删除操作。"
+          fi
       - name: install
         run: |
           #  检查部署目录是否存在，不存在则创建

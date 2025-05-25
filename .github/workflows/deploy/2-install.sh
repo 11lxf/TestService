@@ -1,9 +1,5 @@
 #!/bin/bash
 
-NEXUS_HOST="https://nexus.shawf.me"
-GROUP_ID="me/shawf"
-ARTIFACT_ID="test-service"
-
 #  检查部署目录是否存在，不存在则创建
 echo "0.检查部署目录是否存在，不存在则创建..."
 if [ ! -d "$DEPLOY_PATH/$SERVICE_NAME" ]; then
@@ -36,8 +32,4 @@ else
     echo "安装包拉取失败"
     exit 1
 fi
-
-# 解压安装包（如果需要）
-# tar -xzvf "$PACKAGE_NAME"
-
 echo "安装完成"

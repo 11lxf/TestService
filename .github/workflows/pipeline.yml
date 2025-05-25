@@ -148,7 +148,7 @@ jobs:
           status_check() {
           	echo `curl -I -m 10 -o /dev/null -s -w %{http_code} "http://localhost:${SERVICE_PORT}/api/v1/test/healthcheck"`
           }
-
+ 
           # 设置最大尝试次数
           max_attempts=30
           attempts=0

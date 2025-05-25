@@ -68,20 +68,20 @@ jobs:
       MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
     steps:
       # 使用systemd管理的Java服务，就不需要这个步骤了
-#      - name: stop
-#        run: |
-#          echo "0.停止相关进程..."
-#          PID=$(ps -ef | grep $ARTIFACT_ID-$VERSION.jar | grep -v grep | awk '{ print $2 }')
-#          if [ -n "$PID" ]; then
-#              echo "Killing process with PID $PID"
-#              kill -9 $PID
-#          fi
+      #      - name: stop
+      #        run: |
+      #          echo "0.停止相关进程..."
+      #          PID=$(ps -ef | grep $ARTIFACT_ID-$VERSION.jar | grep -v grep | awk '{ print $2 }')
+      #          if [ -n "$PID" ]; then
+      #              echo "Killing process with PID $PID"
+      #              kill -9 $PID
+      #          fi
       - name: uninstall
         run: |
           echo "0.删除对应文件..."
           find /opt/apps/TestService/ \( -name '*.jar' -o -name 'maven-metadata.xml' \) -delete
       - name: install
-        run: |   
+        run: |
           #  检查部署目录是否存在，不存在则创建
           echo "0.检查部署目录是否存在，不存在则创建..."
           if [ ! -d "$DEPLOY_PATH/$SERVICE_NAME" ]; then
@@ -144,6 +144,7 @@ jobs:
           sudo systemctl restart $ARTIFACT_ID.service
       - name: check
         run: |
+          # 临时加入调试
           set -ex
           echo "0.健康检查..."
           status_check() {

@@ -79,7 +79,7 @@ jobs:
   deploy:
     # 需要 build 执行完后才执行，否则 job 是并行执行的
     needs: build
-    runs-on: debian-hk-claw-2c2g
+    runs-on: debian-12-test
     env:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}

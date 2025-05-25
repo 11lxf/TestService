@@ -1,4 +1,4 @@
 #!/bin/bash
 
 echo "0.删除对应文件..."
-rm -r $DEPLOY_PATH/$SERVICE_NAME/*.jar $DEPLOY_PATH/$SERVICE_NAME/maven-metadata.xml
+find /opt/apps/TestService/ \( -name '*.jar' -o -name 'maven-metadata.xml' \) -delete

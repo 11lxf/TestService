@@ -56,24 +56,16 @@ jobs:
     # 需要 build 执行完后才执行，否则 job 是并行执行的
     needs: build
     runs-on: debian-hk-claw-2c2g
+    env:
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
+      NEXUS_HOST: ${{ vars.NEXUS_HOST }}
+      GROUP_ID: ${{ vars.GROUP_ID }}
+      VERSION: ${{ needs.build.outputs.version }}
+      MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+      MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
     steps:
-      - name: set-env-var
-        env:
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
-          SERVICE_NAME: ${{ vars.SERVICE_NAME }}
-          ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
-          NEXUS_HOST: ${{ vars.NEXUS_HOST }}
-          GROUP_ID: ${{ vars.GROUP_ID }}
-          VERSION: ${{ needs.build.outputs.version }}
-          MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
-          MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
-        run: |
-          echo "DEPLOY_PATH: $DEPLOY_PATH"
-          echo "SERVICE_NAME: $SERVICE_NAME"
-          echo "ARTIFACT_ID: $ARTIFACT_ID"
-          echo "NEXUS_HOST: $NEXUS_HOST"
-          echo "GROUP_ID: $GROUP_ID"
-          echo "VERSION: $VERSION"
       - name: stop
         run: |
           echo "0.停止相关进程..."

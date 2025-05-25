@@ -8,6 +8,22 @@ on:
       - synchronize # PR创建或代码更新时触发
     branches:
       - main
+  # 允许手动触发（UI或API）
+  workflow_dispatch:
+    # 带输入参数
+    inputs:
+      environment:
+        description: 'Deploy target (prod/uat)'
+        required: true
+        default: 'uat'
+        type: choice
+        options:
+          - prod
+          - uat
+      debug_mode:
+        description: 'Enable debug logs?'
+        required: false
+        type: boolean
 
 jobs:
   # 构建
@@ -17,11 +33,17 @@ jobs:
     outputs:
       version: ${{ steps.build-and-publish.outputs.version }}
     steps:
-      # 检出代码
+      # 检出代码-PR触发
       - name: checkout-code
         uses: actions/checkout@v4
+        if: github.event_name == 'pull_request_target'
         with:
           ref: ${{ github.event.pull_request.head.sha }} # 指定切换到PR提交的源分支
+          
+      # 检出代码-非PR触发
+      - name: checkout-code-default-branch
+        uses: actions/checkout@v4
+        if: github.event_name != 'pull_request_target'
 
       # 安装JDK21
       - name: setup-java
@@ -146,7 +168,7 @@ jobs:
         run: |
           echo "0.健康检查..."
           status_check() {
-          echo `curl -I -m 10 -o /dev/null -s -w %{http_code} "http://localhost:${SERVICE_PORT}/api/v1/test/healthcheck"`
+            echo `curl -I -m 10 -o /dev/null -s -w %{http_code} "http://localhost:${SERVICE_PORT}/api/v1/test/healthcheck"`
           }
 
           # 设置最大尝试次数
@@ -157,7 +179,8 @@ jobs:
           until [ "200"x = "$result"x ] || [ $attempts -ge $max_attempts ]
           do
             result=$(status_check)
-            ((attempts++))
+            # ((attempts++))
+            attempts=$((attempts+1))
             sleep 2
           done
 

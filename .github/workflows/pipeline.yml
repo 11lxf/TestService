@@ -67,14 +67,15 @@ jobs:
       MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
       MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
     steps:
-      - name: stop
-        run: |
-          echo "0.停止相关进程..."
-          PID=$(ps -ef | grep $ARTIFACT_ID-$VERSION.jar | grep -v grep | awk '{ print $2 }')
-          if [ -n "$PID" ]; then
-              echo "Killing process with PID $PID"
-              kill -9 $PID
-          fi
+      # 使用systemd管理的Java服务，就不需要这个步骤了
+#      - name: stop
+#        run: |
+#          echo "0.停止相关进程..."
+#          PID=$(ps -ef | grep $ARTIFACT_ID-$VERSION.jar | grep -v grep | awk '{ print $2 }')
+#          if [ -n "$PID" ]; then
+#              echo "Killing process with PID $PID"
+#              kill -9 $PID
+#          fi
       - name: uninstall
         run: |
           echo "0.删除对应文件..."
@@ -86,6 +87,7 @@ jobs:
           if [ ! -d "$DEPLOY_PATH/$SERVICE_NAME" ]; then
               echo "部署目录不存在，正在创建: $DEPLOY_PATH/$SERVICE_NAME"
               mkdir -p "$DEPLOY_PATH/$SERVICE_NAME"
+              chown appuser:appgroup -R "$DEPLOY_PATH/$SERVICE_NAME"
           else
               echo "部署目录已存在: $DEPLOY_PATH/$SERVICE_NAME"
           fi
@@ -114,17 +116,32 @@ jobs:
           else
               echo "安装包拉取失败"
               exit 1
-          fi         
+          fi   
+          chown appuser:appgroup -R "$DEPLOY_PATH/$SERVICE_NAME"
           echo "安装完成"
       - name: start
         run: |
           echo "0.启动程序..."
-          # 加上nohup防止ssh中断导致程序退出，&后台运行，添加了2>&1将标准错误也重定向到日志文件  
-          nohup ${JAVA_HOME}/bin/java \
-          -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
-          --spring.profiles.active=uat \
-          > $DEPLOY_PATH/$SERVICE_NAME/java.log &
-          echo "1.启动程序完成"
+          cat << EOF | sudo tee /etc/systemd/system/$ARTIFACT_ID.service
+          [Unit]
+          Description=${SERVICE_NAME}
+          After=network.target
+
+          [Service]
+          ExecStart=${JAVA_HOME}/bin/java \
+                    -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
+                    --spring.profiles.active=uat --server.port=${SERVER_PORT}
+          Restart=on-failure
+          User=appuser
+          Group=appgroup
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          sudo systemctl daemon-reload
+          sudo systemctl enable $ARTIFACT_ID.service
+          sudo systemctl restart $ARTIFACT_ID.service
       - name: check
         run: |
           echo "0.健康检查..."

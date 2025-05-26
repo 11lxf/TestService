@@ -1,13 +1,16 @@
 name: test-pipeline
 
-# 向 main 分支创建或更新 PR 时触发
 on:
+  # 向 main 分支创建或更新 PR 时触发
   pull_request_target:
     types:
       - opened
       - synchronize # PR创建或代码更新时触发
     branches:
       - main
+  # 发布 release 版本时触发
+  release:
+    types: published
   # 允许手动触发（UI或API）
   workflow_dispatch:
     # 带输入参数
@@ -34,6 +37,8 @@ jobs:
     # 输出变量用于第二个job
     outputs:
       version: ${{ steps.build-and-publish.outputs.version }}
+      environment: ${{ steps.set-var.outputs.environment }}
+      is_release: ${{ steps.set-var.outputs.is_release }}
     steps:
       # 检出代码-PR触发
       - name: checkout-code
@@ -64,11 +69,32 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      # 构建前先设置变量
+      - id: set-var
+        name: set-var
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "IS_RELEASE=true" >> $GITHUB_ENV
+            # 读取 release 时候填写的 title 作为版本号
+            echo "RELEASE_VERSION=${{ github.event.release.name }}" >> $GITHUB_ENV
+            # 发布正式环境
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          elif [[ "$GITHUB_EVENT_NAME" == "pull_request_target" ]]; then
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "IS_RELEASE=false" >> $GITHUB_ENV
+            # 发布测试环境
+            echo "environment=uat" >> $GITHUB_OUTPUT
+          elif [[  "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "IS_RELEASE=false" >> $GITHUB_ENV
+            # 根据输入参数发布对应环境
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          fi
       # 构建并发布到仓库
       - id: build-and-publish
         name: build-and-publish
         env:
-          IS_RELEASE: false
           MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           SERVICE_NAME: ${{ vars.SERVICE_NAME }}
@@ -79,7 +105,8 @@ jobs:
   deploy:
     # 需要 build 执行完后才执行，否则 job 是并行执行的
     needs: build
-    runs-on: debian-12-test
+    # 这里暂时用同一个服务器部署
+    runs-on: ${{ needs.build.outputs.environment }} == 'prod' ? 'debian-12-test':'debian-12-test'
     env:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
@@ -88,6 +115,8 @@ jobs:
       NEXUS_HOST: ${{ vars.NEXUS_HOST }}
       GROUP_ID: ${{ vars.GROUP_ID }}
       VERSION: ${{ needs.build.outputs.version }}
+      ENVIRONMENT: ${{ needs.build.outputs.environment }}
+      IS_RELEASE: ${{ needs.build.outputs.is_release }}
       MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
       MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
     steps:
@@ -109,7 +138,8 @@ jobs:
           else
             echo "目录 $app_dir 不存在，无需执行删除操作。"
           fi
-      - name: install
+      - name: install_uat
+        if: needs.build.outputs.environment == 'uat'
         run: |
           #  检查部署目录是否存在，不存在则创建
           echo "0.检查部署目录是否存在，不存在则创建..."
@@ -130,16 +160,43 @@ jobs:
           echo "1.下载maven-metadata.xml..."
           METADATA_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$VERSION/maven-metadata.xml"
           if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$METADATA_URL" -O maven-metadata.xml; then
-                echo "maven-metadata.xml拉取成功: maven-metadata.xml"
-            else
-                echo "maven-metadata.xml拉取失败"
-                exit 1
-            fi
+              echo "maven-metadata.xml拉取成功: maven-metadata.xml"
+          else
+              echo "maven-metadata.xml拉取失败"
+              exit 1
+          fi
           echo "2.正在从maven-metadata.xml解析出snapshotVersion字段并拼接安装包下载URL..."
           SNAPSHOT_VERSION=$(grep '<value>' maven-metadata.xml | sed 's/<[^>]*>//g' | head -n1 | tr -d ' \t')
           DOWNLOAD_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$SNAPSHOT_VERSION.jar"
           
           echo "3.正在从私有仓库拉取安装包..."
+          if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$DOWNLOAD_URL" -O "$ARTIFACT_ID-$VERSION.jar"; then
+              echo "安装包拉取成功: $ARTIFACT_ID-$VERSION.jar"
+          else
+              echo "安装包拉取失败"
+              exit 1
+          fi   
+          chown appuser:appgroup -R "$DEPLOY_PATH/$SERVICE_NAME"
+          echo "安装完成"
+      - name: install_prod
+        if: needs.build.outputs.environment == 'prod'
+        run: |
+          #  检查部署目录是否存在，不存在则创建
+          echo "0.检查部署目录是否存在，不存在则创建..."
+          if [ ! -d "$DEPLOY_PATH/$SERVICE_NAME" ]; then
+              echo "部署目录不存在，正在创建: $DEPLOY_PATH/$SERVICE_NAME"
+              mkdir -p "$DEPLOY_PATH/$SERVICE_NAME"
+              chown appuser:appgroup -R "$DEPLOY_PATH/$SERVICE_NAME"
+          else
+              echo "部署目录已存在: $DEPLOY_PATH/$SERVICE_NAME"
+          fi
+
+          ## 进入部署目录
+          cd "$DEPLOY_PATH/$SERVICE_NAME" || { echo "无法进入部署目录"; exit 1; }
+
+          # 直接从私有仓库拉取release安装包
+          echo "1.正在从私有仓库拉取安装包..."
+          DOWNLOAD_URL="$NEXUS_HOST/repository/maven-releases/$GROUP_ID/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$VERSION.jar"
           if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$DOWNLOAD_URL" -O "$ARTIFACT_ID-$VERSION.jar"; then
               echo "安装包拉取成功: $ARTIFACT_ID-$VERSION.jar"
           else
@@ -161,7 +218,7 @@ jobs:
           [Service]
           ExecStart=$JAVA_HOME/bin/java \
                     -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
-                    --spring.profiles.active=uat --server.port=$SERVICE_PORT
+                    --spring.profiles.active=$ENVIRONMENT --server.port=$SERVICE_PORT
           Restart=on-failure
           User=appuser
           Group=appgroup

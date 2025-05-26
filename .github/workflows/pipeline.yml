@@ -101,12 +101,13 @@ jobs:
         run: |
           bash .github/workflows/build/buildAndPublish.sh
 
-  # 部署
-  deploy:
+  # 部署uat环境
+  deploy-uat:
     # 需要 build 执行完后才执行，否则 job 是并行执行的
     needs: build
     # 这里暂时用同一个服务器部署
-    runs-on: ${{ needs.build.outputs.environment }} == 'prod' ? 'debian-12-test':'debian-12-test'
+    runs-on: debian-12-test
+    if: needs.build.outputs.environment == 'uat'
     env:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
@@ -138,8 +139,7 @@ jobs:
           else
             echo "目录 $app_dir 不存在，无需执行删除操作。"
           fi
-      - name: install_uat
-        if: needs.build.outputs.environment == 'uat'
+      - name: install
         run: |
           #  检查部署目录是否存在，不存在则创建
           echo "0.检查部署目录是否存在，不存在则创建..."
@@ -178,8 +178,99 @@ jobs:
           fi   
           chown appuser:appgroup -R "$DEPLOY_PATH/$SERVICE_NAME"
           echo "安装完成"
-      - name: install_prod
-        if: needs.build.outputs.environment == 'prod'
+      - name: start
+        run: |
+          echo "0.启动程序..."
+          # 显式刷新环境变量
+          source /etc/profile
+          cat << EOF | sudo tee /etc/systemd/system/$ARTIFACT_ID.service
+          [Unit]
+          Description=${SERVICE_NAME}
+          After=network.target
+
+          [Service]
+          ExecStart=$JAVA_HOME/bin/java \
+                    -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
+                    --spring.profiles.active=$ENVIRONMENT --server.port=$SERVICE_PORT
+          Restart=on-failure
+          User=appuser
+          Group=appgroup
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          sudo systemctl daemon-reload
+          sudo systemctl enable $ARTIFACT_ID.service
+          sudo systemctl restart $ARTIFACT_ID.service
+      - name: check
+        run: |
+          echo "0.健康检查..."
+          status_check() {
+            echo `curl -I -m 10 -o /dev/null -s -w %{http_code} "http://localhost:${SERVICE_PORT}/api/v1/test/healthcheck"`
+          }
+
+          # 设置最大尝试次数
+          max_attempts=30
+          attempts=0
+
+          result=$(status_check)
+          until [ "200"x = "$result"x ] || [ $attempts -ge $max_attempts ]
+          do
+            result=$(status_check)
+            # ((attempts++)) 有时候会报错
+            attempts=$((attempts+1))
+            sleep 2
+          done
+
+          # 检查是否达到最大尝试次数
+          if [ $attempts -ge $max_attempts ]; then
+            echo "Timeout reached, status is not 200"
+            exit 1 # 返回错误状态码
+          else
+            echo "Status is 200"
+            exit 0 # 返回成功状态码
+          fi
+
+  # 部署prod环境
+  deploy-prod:
+    # 需要 build 执行完后才执行，否则 job 是并行执行的
+    needs: build
+    # 这里暂时用同一个服务器部署
+    runs-on: debian-12-test
+    if: needs.build.outputs.environment == 'prod'
+    env:
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      SERVICE_PORT: ${{ vars.SERVICE_PORT }}
+      ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
+      NEXUS_HOST: ${{ vars.NEXUS_HOST }}
+      GROUP_ID: ${{ vars.GROUP_ID }}
+      VERSION: ${{ needs.build.outputs.version }}
+      ENVIRONMENT: ${{ needs.build.outputs.environment }}
+      IS_RELEASE: ${{ needs.build.outputs.is_release }}
+      MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+      MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+    steps:
+      # 使用systemd管理的Java服务，就不需要这个步骤了
+      #      - name: stop
+      #        run: |
+      #          echo "0.停止相关进程..."
+      #          PID=$(ps -ef | grep $ARTIFACT_ID-$VERSION.jar | grep -v grep | awk '{ print $2 }')
+      #          if [ -n "$PID" ]; then
+      #              echo "Killing process with PID $PID"
+      #              kill -9 $PID
+      #          fi
+      - name: uninstall
+        run: |
+          echo "0.删除对应文件..."
+          app_dir=$DEPLOY_PATH/$SERVICE_NAME
+          if [ -d "$app_dir" ]; then
+            find $app_dir \( -name '*.jar' -o -name 'maven-metadata.xml' \) -delete
+          else
+            echo "目录 $app_dir 不存在，无需执行删除操作。"
+          fi
+      - name: install
         run: |
           #  检查部署目录是否存在，不存在则创建
           echo "0.检查部署目录是否存在，不存在则创建..."

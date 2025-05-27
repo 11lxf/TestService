@@ -22,6 +22,6 @@ public class HealthCheckController {
      */
     @GetMapping("/healthcheck")
     public String healthcheck() {
-        return "TestService is OK!!";
+        return "TestService is OK!!!";
     }
 }

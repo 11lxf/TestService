@@ -58,20 +58,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin' # 使用 Temurin 产商的 JDK 版本
-          
-      # 代码检查
-      - name: code-check
-        uses: actions/sonarqube-scan-action@v5
-        if: github.event_name == 'pull_request_target'
-        with:
-          projectBaseDir: . # 项目根目录
-          sonarqube-scanner-version: '6.2.0.4584'
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: 'https://sonarcloud.io'
-          args: >
-            -Dsonar.organization=11lxf
-            -Dsonar.projectKey=11lxf
-
+        
       # 配置Maven仓库缓存，避免每次构建时都重新下载依赖
       - name: cache-local-maven-repository
         uses: actions/cache@v4

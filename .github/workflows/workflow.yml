@@ -2,12 +2,12 @@ name: test-pipeline
 
 on:
   # 向 main 分支创建或更新 PR 时触发
-  pull_request_target:
-    types:
-      - opened
-      - synchronize # PR创建或代码更新时触发
-    branches:
-      - main
+#  pull_request_target:
+#    types:
+#      - opened
+#      - synchronize # PR创建或代码更新时触发
+#    branches:
+#      - main
   # 发布 release 版本时触发
   release:
     types: published
@@ -33,7 +33,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     # 仅允许成员才能触发
-    if: contains(fromJson('["shawflee"]'), github.event.sender.login)
+    if: contains(fromJSON('["shawflee"]'), github.event.sender.login)
     # 输出变量用于第二个job
     outputs:
       version: ${{ steps.build-and-publish.outputs.version }}
@@ -46,7 +46,7 @@ jobs:
         if: github.event_name == 'pull_request_target'
         with:
           ref: ${{ github.event.pull_request.head.sha }} # 指定切换到PR提交的源分支
-          
+
       # 检出代码-非PR触发
       - name: checkout-code-default-branch
         uses: actions/checkout@v4
@@ -58,7 +58,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin' # 使用 Temurin 产商的 JDK 版本
-        
+
       # 配置Maven仓库缓存，避免每次构建时都重新下载依赖
       - name: cache-local-maven-repository
         uses: actions/cache@v4
@@ -99,9 +99,24 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
           SERVICE_NAME: ${{ vars.SERVICE_NAME }}
         run: |
-          bash .github/workflows/build/buildAndPublish.sh
+          set -ex         
+          echo "Release is ${IS_RELEASE}"
+          # 判断当前构建是否为版本构建，以及定义构建变量(包版本,包服务名称,包编译存放路径,包类型,包编译名称,包打包名称)
+          if [ "${IS_RELEASE}"x = "false"x ]; then
+            # 保存版本变量到输出变量version
+            echo "version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+            # maven打包并发布到私仓
+            mvn clean deploy --settings .github/workflows/https_settings.xml
+          elif [ "${IS_RELEASE}"x = "true"x ]; then
+            # 保存版本变量到输出变量version
+            echo "version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
+            # 设定 release 版本, -DgenerateBackupPoms=false 表示不生成备份文件
+            mvn versions:set -DnewVersion=${RELEASE_VERSION} -DgenerateBackupPoms=false
+            # maven打包并发布到私仓, 主仓合入代码前必须保证所有测试通过，所以发布正式环境时跳过单元测试
+            mvn clean deploy --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true
+          fi
 
-  # 部署uat环境
+  # 部署uat环境n
   deploy-uat:
     # 需要 build 执行完后才执行，否则 job 是并行执行的
     needs: build

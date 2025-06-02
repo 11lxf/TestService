@@ -4,7 +4,7 @@ metadata:
   name: test-service
   namespace: 11lxf-uat
   labels:
-    app: test
+    app: test-service
 spec:
   type: ClusterIP
   selector:

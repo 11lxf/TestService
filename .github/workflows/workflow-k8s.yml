@@ -1,0 +1,209 @@
+name: test-pipeline
+
+on:
+  # 向 main 分支创建或更新 PR 时触发
+  pull_request_target:
+    types:
+      - opened
+      - synchronize # PR创建或代码更新时触发
+    branches:
+      - main
+  # 发布 release 版本时触发
+  release:
+    types: published
+  # 允许手动触发（UI或API）
+  workflow_dispatch:
+    # 带输入参数
+    inputs:
+      environment:
+        description: 'Deploy target (prod/uat)'
+        required: true
+        default: 'uat'
+        type: choice
+        options:
+          - prod
+          - uat
+      debug_mode:
+        description: 'Enable debug logs?'
+        required: false
+        type: boolean
+
+jobs:
+  # 构建
+  build:
+    runs-on: ubuntu-latest
+    # 仅允许成员才能触发
+    if: contains(fromJSON('["shawflee"]'), github.event.sender.login)
+    env:
+      MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
+      MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
+      ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
+    # 输出变量用于第二个job
+    outputs:
+      version: ${{ steps.build-and-publish-maven.outputs.version }}
+      environment: ${{ steps.set-var.outputs.environment }}
+      is_release: ${{ steps.set-var.outputs.is_release }}
+    steps:
+      # 检出代码-PR触发
+      - name: checkout-code
+        uses: actions/checkout@v4
+        if: github.event_name == 'pull_request_target'
+        with:
+          ref: ${{ github.event.pull_request.head.sha }} # 指定切换到PR提交的源分支
+
+      # 检出代码-非PR触发
+      - name: checkout-code-default-branch
+        uses: actions/checkout@v4
+        if: github.event_name != 'pull_request_target'
+
+      # 安装JDK21
+      - name: setup-java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin' # 使用 Temurin 产商的 JDK 版本
+
+      # 配置Maven仓库缓存，避免每次构建时都重新下载依赖
+      - name: cache-local-maven-repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: |
+            ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # 构建前先设置变量
+      - id: set-var
+        name: set-var
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == "release" ]]; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "IS_RELEASE=true" >> $GITHUB_ENV
+            # 读取 release 时候填写的 title 作为版本号
+            echo "RELEASE_VERSION=${{ github.event.release.name }}" >> $GITHUB_ENV
+            # 发布正式环境
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          elif [[ "$GITHUB_EVENT_NAME" == "pull_request_target" ]]; then
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "IS_RELEASE=false" >> $GITHUB_ENV
+            # 发布测试环境
+            echo "environment=uat" >> $GITHUB_OUTPUT
+          elif [[  "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "IS_RELEASE=false" >> $GITHUB_ENV
+            # 根据输入参数发布对应环境
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Maven构建并发布到仓库
+      - id: build-and-publish-maven
+        name: build-and-publish-maven
+        run: |
+          set -ex         
+          echo "Release is ${IS_RELEASE}"
+          # 判断当前构建是否为版本构建，以及定义构建变量(包版本,包服务名称,包编译存放路径,包类型,包编译名称,包打包名称)
+          if [ "${IS_RELEASE}"x = "false"x ]; then
+            # 保存版本变量到输出变量version
+            echo "version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
+            # maven打包并发布到私仓
+            mvn clean deploy --settings .github/workflows/https_settings.xml
+          elif [ "${IS_RELEASE}"x = "true"x ]; then
+            # 保存版本变量到输出变量version
+            echo "version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT
+            # 设定 release 版本, -DgenerateBackupPoms=false 表示不生成备份文件
+            mvn versions:set -DnewVersion=${RELEASE_VERSION} -DgenerateBackupPoms=false
+            # maven打包并发布到私仓, 主仓合入代码前必须保证所有测试通过，所以发布正式环境时跳过单元测试
+            mvn clean deploy --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true
+          fi
+
+      # 安装docker
+      - name: setup-docker
+        uses: docker/setup-docker-action@v4
+
+      # Docker构建并发布到仓库
+      - name: build-and-publish-docker
+        env:
+          DOCKERHUB_URL: ${{ vars.DOCKERHUB_URL }}
+          REPO: ${{ vars.REPO }}
+        run: |
+          set -ex
+          # Maven构建中已经输出版本号，这里直接使用
+          VERSION=${{ steps.build-and-publish-maven.outputs.version }}
+          echo "VERSION is ${VERSION}"
+          # 构建
+          docker build \
+          --build-arg ARTIFACT_ID=$ARTIFACT_ID \
+          --build-arg VERSION=$VERSION \
+          -t $DOCKERHUB_URL/$REPO/$ARTIFACT_ID:$VERSION \
+          -f .build/Dockerfile .
+          # 登录推送
+          docker login $DOCKERHUB_URL -u $MAVEN_USERNAME -p $MAVEN_PASSWORD
+          docker push $DOCKERHUB_URL/11lxf/$ARTIFACT_ID:$VERSION
+
+  # 部署 k8s
+  deploy-k8s:
+    # 需要 build 执行完后才执行，否则 job 是并行执行的
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      SERVICE_PORT: ${{ vars.SERVICE_PORT }}
+      ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
+      VERSION: ${{ needs.build.outputs.version }}
+      ENVIRONMENT: ${{ needs.build.outputs.environment }}
+    steps:
+      # 为了安全，部署检出代码只使用主仓的分支代码
+      - name: checkout-code-default-branch
+        uses: actions/checkout@v4
+
+      # 安装kubectl
+      - name: setup-kubectl
+        uses: actions-hub/kubectl@v1.31.1
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: get ns
+
+      # k8s部署服务
+      - name: apply
+        run: |
+          set -ex
+          echo "0.切换到k8s部署目录.deploy/k8s"
+          cd .deploy/k8s
+          echo "1.根据环境变量生成kustomization.yaml"
+          envsubst < kustomization-template.yaml > kustomization.yaml 
+          echo "2.应用k8s相关资源"
+          kubectl apply -k .
+          echo "3.执行应用k8s相关资源完成"
+
+      # 健康检查
+      - name: check
+        run: |
+          echo "0.健康检查..."
+          status_check() {
+            echo `curl -I -m 10 -o /dev/null -s -w %{http_code} "https://${SERVICE_HOST}/api/v1/test/healthcheck"`
+          }
+
+          # 设置最大尝试次数
+          max_attempts=30
+          attempts=0
+
+          result=$(status_check)
+          until [ "200"x = "$result"x ] || [ $attempts -ge $max_attempts ]
+          do
+            result=$(status_check)
+            # ((attempts++)) 有时候会报错
+            attempts=$((attempts+1))
+            sleep 2
+          done
+
+          # 检查是否达到最大尝试次数
+          if [ $attempts -ge $max_attempts ]; then
+            echo "Timeout reached, status is not 200"
+            exit 1 # 返回错误状态码
+          else
+            echo "Status is 200"
+            exit 0 # 返回成功状态码
+          fi

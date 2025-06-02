@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-service
+  namespace: 11lxf-uat
+  labels:
+    app: test-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-service
+  template:
+    metadata:
+      name: test-service
+      labels:
+        app: test-service
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+        - name: test-service
+          image: dockerhub.shawf.me/11lxf/test-service:1.0.0-SNAPSHOT
+          # 测试环境tag一样，每次都拉取最新的镜像
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            limits:
+              cpu: '2'
+              memory: '2Gi'
+            requests:
+              cpu: '50m'
+              memory: '128Mi'
+          env:
+            - name: TZ
+              value: "Asia/Shanghai"
+            - name: PUID
+              value: "3000"
+            - name: PGID
+              value: "3000"
+          volumeMounts:
+            - name: logs-data
+              mountPath: /logs/test-service
+              subPath: test-service
+      restartPolicy: Always
+      volumes:
+        - name: logs-data
+          persistentVolumeClaim:
+            claimName: logs-claim

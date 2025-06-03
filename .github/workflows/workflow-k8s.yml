@@ -158,25 +158,21 @@ jobs:
       - name: checkout-code-default-branch
         uses: actions/checkout@v4
 
-      # 安装kubectl
-      - name: setup-kubectl
-        uses: actions-hub/kubectl@v1.31.1
-        env:
-          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
-        with:
-          args: get ns
-
-      # k8s部署服务
-      - name: apply
+      # 替换环境变量
+      - name: replace-env
         run: |
-          set -ex
           echo "0.切换到k8s部署目录.deploy/k8s"
           cd .deploy/k8s
           echo "1.根据环境变量生成kustomization.yaml"
           envsubst < kustomization-template.yaml > kustomization.yaml 
-          echo "2.应用k8s相关资源"
-          kubectl apply -k .
-          echo "3.执行应用k8s相关资源完成"
+          
+      # kubectl部署k8s相关资源
+      - name: kubectl-apply
+        uses: actions-hub/kubectl@v1.31.1
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args:  apply -k .
 
       # 健康检查
       - name: check

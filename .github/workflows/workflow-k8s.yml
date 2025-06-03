@@ -165,15 +165,30 @@ jobs:
           echo "0.切换到k8s部署目录.deploy/k8s"
           cd .deploy/k8s
           echo "1.根据环境变量生成kustomization.yaml"
-          envsubst < kustomization-template.yaml > kustomization.yaml 
+          envsubst < base/kustomization.yaml > base/kustomization-new.yaml 
+          mv base/kustomization-new.yaml base/kustomization.yaml
+          envsubst < overlays/uat/kustomization.yaml > overlays/uat/kustomization-new.yaml
+          mv overlays/uat/kustomization-new.yaml overlays/uat/kustomization.yaml
+          envsubst < overlays/prod/kustomization.yaml > overlays/prod/kustomization-new.yaml
+          mv overlays/prod/kustomization-new.yaml overlays/prod/kustomization.yaml
           
-      # kubectl部署k8s相关资源
-      - name: kubectl-apply
+      # uat kubectl部署k8s相关资源
+      - name: kubectl-apply-uat
+        if: needs.build.outputs.environment == 'uat'
         uses: actions-hub/kubectl@v1.31.1
         env:
           KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
         with:
-          args:  apply -k .deploy/k8s/.
+          args:  apply -k .deploy/k8s/overlays/uat/.
+
+      # prod kubectl部署k8s相关资源
+      - name: kubectl-apply-prod
+        if: needs.build.outputs.environment == 'prod'
+        uses: actions-hub/kubectl@v1.31.1
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        with:
+          args: apply -k .deploy/k8s/overlays/prod/.
 
       # 健康检查
       - name: check

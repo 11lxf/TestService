@@ -9,8 +9,8 @@ on:
 #    branches:
 #      - main
   # 发布 release 版本时触发
-  release:
-    types: published
+#  release:
+#    types: published
   # 允许手动触发（UI或API）
   workflow_dispatch:
     # 带输入参数

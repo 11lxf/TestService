@@ -115,7 +115,7 @@ jobs:
             # 设定 release 版本, -DgenerateBackupPoms=false 表示不生成备份文件
             mvn versions:set -DnewVersion=${RELEASE_VERSION} -DgenerateBackupPoms=false
             # maven打包并发布到私仓, 主仓合入代码前必须保证所有测试通过，所以发布正式环境时跳过单元测试
-            mvn clean deploy --settings .github/workflows/https_settings.xml -Dmaven.test.skip=true
+            mvn clean deploy --settings .build/mvn-https-settings.xml -Dmaven.test.skip=true
           fi
 
       # 安装docker

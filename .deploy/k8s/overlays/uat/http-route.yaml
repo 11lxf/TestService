@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: test-route
+  namespace: 11lxf-uat
+spec:
+  parentRefs:
+    - name: istio-gateway # 绑定 istio-gateway
+      namespace: istio-system
+      sectionName: https
+  hostnames:
+    - "test-test.shawf.me"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: test-service
+          port: 8080

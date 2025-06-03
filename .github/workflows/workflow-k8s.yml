@@ -199,7 +199,7 @@ jobs:
             url="https://${SERVICE_HOST}-test/api/v1/test/healthcheck"
           fi
           status_check() {
-            echo `curl -I -m 10 -o /dev/null -s -w %{http_code} "https://${SERVICE_HOST}/api/v1/test/healthcheck"`
+            echo `curl -I -m 10 -o /dev/null -s -w %{http_code} $url`
           }
 
           # 设置最大尝试次数

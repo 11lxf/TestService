@@ -6,8 +6,6 @@ resources:
   - service.yaml
   - http-route.yaml
 
-namespace: 11lxf-${ENVIRONMENT}
-
 labels:
   - includeSelectors: true
     includeTemplates: true

@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+namespace: 11lxf-uat
+
+patches:
+  - target:
+      kind: Deployment
+      name: test-service
+    patch: |
+      - op: add
+        path: /spec/template/spec/containers/0/command
+        value:
+          - "java"
+          - "-jar"
+          - "test-service-${VERSION}.jar"
+          - "--spring.profiles.active=prod"

@@ -108,7 +108,7 @@ jobs:
             # 保存版本变量到输出变量version
             echo "version=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)" >> $GITHUB_OUTPUT
             # maven打包并发布到私仓
-            mvn clean deploy --settings .github/workflows/https_settings.xml
+            mvn clean deploy --settings .build/mvn-https-settings.xml
           elif [ "${IS_RELEASE}"x = "true"x ]; then
             # 保存版本变量到输出变量version
             echo "version=${RELEASE_VERSION}" >> $GITHUB_OUTPUT

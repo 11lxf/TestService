@@ -257,7 +257,6 @@ jobs:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
       SERVICE_PORT: ${{ vars.SERVICE_PORT }}
-      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
       NEXUS_HOST: ${{ vars.NEXUS_HOST }}
       GROUP_ID: ${{ vars.GROUP_ID }}
       VERSION: ${{ needs.build.outputs.version }}

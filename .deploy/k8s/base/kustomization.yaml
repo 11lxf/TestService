@@ -9,9 +9,9 @@ labels:
   - includeSelectors: true
     includeTemplates: true
     pairs:
-      app: test-service
+      app: ${SERVICE_NAME}
 
 images:
-  - name: dockerhub.shawf.me/11lxf/test-service
-    newName: dockerhub.shawf.me/11lxf/test-service
+  - name: dockerhub.shawf.me/11lxf/${SERVICE_NAME}
+    newName: dockerhub.shawf.me/11lxf/${SERVICE_NAME}
     newTag: ${VERSION}

@@ -127,7 +127,6 @@ jobs:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
       SERVICE_PORT: ${{ vars.SERVICE_PORT }}
-      ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
       NEXUS_HOST: ${{ vars.NEXUS_HOST }}
       GROUP_ID: ${{ vars.GROUP_ID }}
       VERSION: ${{ needs.build.outputs.version }}
@@ -140,7 +139,7 @@ jobs:
       #      - name: stop
       #        run: |
       #          echo "0.停止相关进程..."
-      #          PID=$(ps -ef | grep $ARTIFACT_ID-$VERSION.jar | grep -v grep | awk '{ print $2 }')
+      #          PID=$(ps -ef | grep $SERVICE_NAME-$VERSION.jar | grep -v grep | awk '{ print $2 }')
       #          if [ -n "$PID" ]; then
       #              echo "Killing process with PID $PID"
       #              kill -9 $PID
@@ -173,7 +172,7 @@ jobs:
           echo "等待maven-metadata.xml更新 10s..." 
           sleep 10 
           echo "1.下载maven-metadata.xml..."
-          METADATA_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$VERSION/maven-metadata.xml"
+          METADATA_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$SERVICE_NAME/$VERSION/maven-metadata.xml"
           if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$METADATA_URL" -O maven-metadata.xml; then
               echo "maven-metadata.xml拉取成功: maven-metadata.xml"
           else
@@ -182,11 +181,11 @@ jobs:
           fi
           echo "2.正在从maven-metadata.xml解析出snapshotVersion字段并拼接安装包下载URL..."
           SNAPSHOT_VERSION=$(grep '<value>' maven-metadata.xml | sed 's/<[^>]*>//g' | head -n1 | tr -d ' \t')
-          DOWNLOAD_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$SNAPSHOT_VERSION.jar"
+          DOWNLOAD_URL="$NEXUS_HOST/repository/maven-snapshots/$GROUP_ID/$SERVICE_NAME/$VERSION/$SERVICE_NAME-$SNAPSHOT_VERSION.jar"
           
           echo "3.正在从私有仓库拉取安装包..."
-          if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$DOWNLOAD_URL" -O "$ARTIFACT_ID-$VERSION.jar"; then
-              echo "安装包拉取成功: $ARTIFACT_ID-$VERSION.jar"
+          if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$DOWNLOAD_URL" -O "$SERVICE_NAME-$VERSION.jar"; then
+              echo "安装包拉取成功: $SERVICE_NAME-$VERSION.jar"
           else
               echo "安装包拉取失败"
               exit 1
@@ -198,14 +197,14 @@ jobs:
           echo "0.启动程序..."
           # 显式刷新环境变量
           source /etc/profile
-          cat << EOF | sudo tee /etc/systemd/system/$ARTIFACT_ID.service
+          cat << EOF | sudo tee /etc/systemd/system/$SERVICE_NAME.service
           [Unit]
           Description=${SERVICE_NAME}
           After=network.target
 
           [Service]
           ExecStart=$JAVA_HOME/bin/java \
-                    -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
+                    -jar $DEPLOY_PATH/$SERVICE_NAME/$SERVICE_NAME-$VERSION.jar \
                     --spring.profiles.active=$ENVIRONMENT --server.port=$SERVICE_PORT
           Restart=on-failure
           User=appuser
@@ -216,8 +215,8 @@ jobs:
           EOF
 
           sudo systemctl daemon-reload
-          sudo systemctl enable $ARTIFACT_ID.service
-          sudo systemctl restart $ARTIFACT_ID.service
+          sudo systemctl enable $SERVICE_NAME.service
+          sudo systemctl restart $SERVICE_NAME.service
       - name: check
         run: |
           echo "0.健康检查..."
@@ -258,7 +257,7 @@ jobs:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
       SERVICE_PORT: ${{ vars.SERVICE_PORT }}
-      ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
       NEXUS_HOST: ${{ vars.NEXUS_HOST }}
       GROUP_ID: ${{ vars.GROUP_ID }}
       VERSION: ${{ needs.build.outputs.version }}
@@ -271,7 +270,7 @@ jobs:
       #      - name: stop
       #        run: |
       #          echo "0.停止相关进程..."
-      #          PID=$(ps -ef | grep $ARTIFACT_ID-$VERSION.jar | grep -v grep | awk '{ print $2 }')
+      #          PID=$(ps -ef | grep $SERVICE_NAME-$VERSION.jar | grep -v grep | awk '{ print $2 }')
       #          if [ -n "$PID" ]; then
       #              echo "Killing process with PID $PID"
       #              kill -9 $PID
@@ -302,9 +301,9 @@ jobs:
 
           # 直接从私有仓库拉取release安装包
           echo "1.正在从私有仓库拉取安装包..."
-          DOWNLOAD_URL="$NEXUS_HOST/repository/maven-releases/$GROUP_ID/$ARTIFACT_ID/$VERSION/$ARTIFACT_ID-$VERSION.jar"
-          if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$DOWNLOAD_URL" -O "$ARTIFACT_ID-$VERSION.jar"; then
-              echo "安装包拉取成功: $ARTIFACT_ID-$VERSION.jar"
+          DOWNLOAD_URL="$NEXUS_HOST/repository/maven-releases/$GROUP_ID/$SERVICE_NAME/$VERSION/$SERVICE_NAME-$VERSION.jar"
+          if wget --user=$MAVEN_USERNAME --password=$MAVEN_PASSWORD "$DOWNLOAD_URL" -O "$SERVICE_NAME-$VERSION.jar"; then
+              echo "安装包拉取成功: $SERVICE_NAME-$VERSION.jar"
           else
               echo "安装包拉取失败"
               exit 1
@@ -316,14 +315,14 @@ jobs:
           echo "0.启动程序..."
           # 显式刷新环境变量
           source /etc/profile
-          cat << EOF | sudo tee /etc/systemd/system/$ARTIFACT_ID.service
+          cat << EOF | sudo tee /etc/systemd/system/$SERVICE_NAME.service
           [Unit]
           Description=${SERVICE_NAME}
           After=network.target
 
           [Service]
           ExecStart=$JAVA_HOME/bin/java \
-                    -jar $DEPLOY_PATH/$SERVICE_NAME/$ARTIFACT_ID-$VERSION.jar \
+                    -jar $DEPLOY_PATH/$SERVICE_NAME/$SERVICE_NAME-$VERSION.jar \
                     --spring.profiles.active=$ENVIRONMENT --server.port=$SERVICE_PORT
           Restart=on-failure
           User=appuser
@@ -334,8 +333,8 @@ jobs:
           EOF
 
           sudo systemctl daemon-reload
-          sudo systemctl enable $ARTIFACT_ID.service
-          sudo systemctl restart $ARTIFACT_ID.service
+          sudo systemctl enable $SERVICE_NAME.service
+          sudo systemctl restart $SERVICE_NAME.service
       - name: check
         run: |
           echo "0.健康检查..."

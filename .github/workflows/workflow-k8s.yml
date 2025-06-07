@@ -38,7 +38,6 @@ jobs:
       MAVEN_USERNAME: ${{ secrets.NEXUS_USERNAME }}
       MAVEN_PASSWORD: ${{ secrets.NEXUS_PASSWORD }}
       SERVICE_NAME: ${{ vars.SERVICE_NAME }}
-      ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
     # 输出变量用于第二个job
     outputs:
       version: ${{ steps.build-and-publish-maven.outputs.version }}
@@ -134,13 +133,13 @@ jobs:
           echo "VERSION is ${VERSION}"
           # 构建
           docker build \
-          --build-arg ARTIFACT_ID=$ARTIFACT_ID \
+          --build-arg SERVICE_NAME=$SERVICE_NAME \
           --build-arg VERSION=$VERSION \
-          -t $DOCKERHUB_URL/$REPO/$ARTIFACT_ID:$VERSION \
+          -t $DOCKERHUB_URL/$REPO/$SERVICE_NAME:$VERSION \
           -f .build/Dockerfile .
           # 登录推送
           docker login $DOCKERHUB_URL -u $MAVEN_USERNAME -p $MAVEN_PASSWORD
-          docker push $DOCKERHUB_URL/11lxf/$ARTIFACT_ID:$VERSION
+          docker push $DOCKERHUB_URL/11lxf/$SERVICE_NAME:$VERSION
 
   # 部署 k8s
   deploy-k8s:
@@ -150,7 +149,6 @@ jobs:
     env:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       SERVICE_PORT: ${{ vars.SERVICE_PORT }}
-      ARTIFACT_ID: ${{ vars.ARTIFACT_ID }}
       VERSION: ${{ needs.build.outputs.version }}
       ENVIRONMENT: ${{ needs.build.outputs.environment }}
       SERVICE_HOST: ${{ vars.SERVICE_HOST }}

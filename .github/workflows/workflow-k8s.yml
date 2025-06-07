@@ -154,6 +154,7 @@ jobs:
       VERSION: ${{ needs.build.outputs.version }}
       ENVIRONMENT: ${{ needs.build.outputs.environment }}
       SERVICE_HOST: ${{ vars.SERVICE_HOST }}
+      SERVICE_HOST_TEST: ${{ vars.SERVICE_HOST_TEST }}
     steps:
       # 为了安全，部署检出代码只使用主仓的分支代码
       - name: checkout-code-default-branch
@@ -196,7 +197,7 @@ jobs:
           echo "0.健康检查..."
           url="https://${SERVICE_HOST}/api/v1/test/healthcheck"
           if [ "$ENVIRONMENT"x = "uat"x ]; then
-            url="https://${SERVICE_HOST}-test/api/v1/test/healthcheck"
+            url="https://${SERVICE_HOST_TEST}/api/v1/test/healthcheck"
           fi
           status_check() {
             echo `curl -I -m 10 -o /dev/null -s -w %{http_code} $url`

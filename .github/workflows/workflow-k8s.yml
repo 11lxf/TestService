@@ -153,6 +153,7 @@ jobs:
       ENVIRONMENT: ${{ needs.build.outputs.environment }}
       SERVICE_HOST: ${{ vars.SERVICE_HOST }}
       SERVICE_HOST_TEST: ${{ vars.SERVICE_HOST_TEST }}
+      SERVICE_NAME: ${{ vars.SERVICE_NAME }}
     steps:
       # 为了安全，部署检出代码只使用主仓的分支代码
       - name: checkout-code-default-branch
